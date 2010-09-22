@@ -291,7 +291,11 @@ def filter_entries(*terms):
                 else:
                     entry_scores[word] += more_entry_scores[word]
 
-    for word in sorted(entry_scores, key=entry_scores.get, reverse=True):
+    def reversed_tuple(iterable):
+        return tuple(reversed(iterable))
+
+    for word, score in sorted(entry_scores.iteritems(),
+                              key=reversed_tuple, reverse=True):
         print(word)
 
 
