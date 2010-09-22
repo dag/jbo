@@ -15,6 +15,7 @@ from urllib2 import urlopen
 import re
 from contextlib import contextmanager
 from textwrap import TextWrapper, dedent
+import sys
 
 try:
     from lxml import etree
@@ -26,6 +27,8 @@ except ImportError:
 
 try:
     from progressbar import ProgressBar, Percentage, Bar
+    if not callable(ProgressBar()):
+        raise ImportError
 except ImportError:
     Percentage = Bar = object
     class ProgressBar(object):
@@ -185,12 +188,22 @@ class Entry(object):
 
 @expose('index')
 def build_database(url=None):
-    """Builds an index from jbovlaste"""
+    """Builds an index from jbovlaste.
+
+    Usage: jbo index [url or path]
+
+    The optional argument is a URL pointing to an XML export of jbovlaste,
+    or a filesystem path, absolute or relative, to such an export.
+
+    With no argument, the current $JBO_LANGUAGE export is downloaded from
+    jbovlaste. This is slow because jbovlaste is slow to generate exports.
+    """
     if LANGUAGE not in LANGUAGES:
         raise SystemExit('error: {0!r} is not an available language'
                         .format(LANGUAGE))
 
     if url is None:
+        print('Exporting data from jbovlaste, might take a minute…')
         url = 'http://jbovlaste.lojban.org/export/xml-export.html?lang=' \
             + LANGUAGE
     if path.isfile(url):
@@ -254,7 +267,7 @@ def build_database(url=None):
 
 @expose('filter')
 def filter_entries(*terms):
-    """Filter all entries and return matches"""
+    """Filter all entries and return matches."""
     entry_scores = {}
 
     with dbopenbuild('tokens') as tokens:
@@ -282,13 +295,22 @@ def filter_entries(*terms):
 
 @expose()
 def define(*args):
-    """Show data for entries"""
+    """Show data for entries.
+
+    Usage: jbo define [entry…]
+
+    Reads standard input if no entries are supplied as arguments.
+    Useful when piped with an entries-outputting command such as jbo filter:
+
+    jbo filter <term> [term…] | jbo define
+    """
     wrapper = TextWrapper(width=COLUMNS - 4)
     wrapper.initial_indent = wrapper.subsequent_indent = '    '
 
     def show(entry, entries):
         if entry not in entries:
-            raise SystemExit('error: {0!r} is not defined'.format(entry))
+            print('error: {0!r} is not defined'.format(entry), file=sys.stderr)
+            return
         entry = entries[entry]
         if ESCAPES:
             print(bold(entry))
@@ -327,7 +349,19 @@ def define(*args):
 
 @expose()
 def bashrc():
-    """Useful stuff to put in ~/.bashrc"""
+    """Useful stuff to put in ~/.bashrc.
+
+    Installation: jbo bashrc >>~/.bashrc && source ~/.bashrc
+
+    Usage:
+
+    def <entry> [entry…]
+        Look up definitions for entries.
+
+    fd <term> [term…]
+        Find entries by search terms and display in a pager.
+
+    """
     stuff = '''
         alias def='COLUMNS=$COLUMNS jbo define'
         function fd() {
@@ -337,6 +371,22 @@ def bashrc():
     print(dedent(stuff))
 
 
+@expose()
+def help(command='help'):
+    """Learn how to use a command.
+
+    Usage: jbo help <command>
+
+    """
+    if command in COMMANDS:
+        doc = COMMANDS[command].__doc__.splitlines()
+        print(doc[0])
+        print(dedent('\n'.join(doc[1:])).rstrip('\n'))
+    else:
+        raise SystemExit('{0}: command not found'.format(command))
+
+
+
 def main(argv):
     """Use jbovlaste on the command line, offline."""
     if len(argv) == 1:
@@ -344,28 +394,29 @@ def main(argv):
         print()
         pad = max(map(len, COMMANDS))
         for cmd, handler in COMMANDS.iteritems():
-            print('  {0:<{pad}}  {1}'
-                 .format(cmd, handler.__doc__ or '', pad=pad))
+            doc = (handler.__doc__ or '\n').splitlines()[0].rstrip('.')
+            print('  {0:<{pad}}  {1}' .format(cmd, doc, pad=pad))
         raise SystemExit
 
     cmd, args = argv[1], argv[2:]
     if cmd not in COMMANDS:
         raise SystemExit('{0}: command not found'.format(cmd))
 
+    def show_error(error):
+        if DEBUG:
+            raise
+        raise SystemExit('error: {0}'.format(error))
     try:
         COMMANDS[cmd](*args)
     except IOError as error:
         if error.errno == 32:
             raise SystemExit('aborted')
+        show_error(error)
     except KeyboardInterrupt:
         raise SystemExit('\naborted')
     except Exception as error:
-        if DEBUG:
-            raise
-        else:
-            raise SystemExit('error: {0}'.format(error))
+        show_error(error)
 
 
 if __name__ == '__main__':
-    import sys
     main(sys.argv)
