@@ -178,6 +178,7 @@ class Entry(object):
         self.word, self.type = word, type
         self.definition = self.raw_definition = None
         self.notes = self.raw_notes = None
+        self.affixes = []
 
     def __str__(self):
         return self.word
@@ -241,6 +242,9 @@ def build_database(url=None):
                 entry.notes = underline_references(entry.notes)
                 score_tokens(tokens, entry.word, entry.raw_notes,
                              1 + type_order.index(entry.type))
+
+            elif case('rafsi'):
+                entry.affixes.append(u(subelement.text))
 
         entries[element.get('word')] = entry
 
@@ -320,7 +324,10 @@ def define(*args):
             return
         entry = entries[entry]
         if ESCAPES:
-            print(bold(entry))
+            if entry.affixes:
+                print(bold(entry), '-' + '-'.join(entry.affixes) + '-')
+            else:
+                print(bold(entry))
             for line in entry.definition.splitlines():
                 print(wrapper.fill(line))
             if entry.notes is not None:
@@ -328,7 +335,10 @@ def define(*args):
                 for line in entry.notes.splitlines():
                     print(wrapper.fill(line))
         else:
-            print(entry)
+            if entry.affixes:
+                print(entry, '-' + '-'.join(entry.affixes) + '-')
+            else:
+                print(entry)
             for line in entry.raw_definition.splitlines():
                 print(wrapper.fill(line))
             if entry.raw_notes is not None:
