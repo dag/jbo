@@ -17,7 +17,7 @@ jbo filter
 jbo index
 ---------
 
-The jbovlaste export for :envvar:`JBO_LANGUAGE` (default :abbr:`en (English)`)
+The jbovlaste export for ``$JBO_LANGUAGE`` (defaultnig to ``en``)
 is automatically downloaded and indexed if needed. This command lets you
 keep the index up to date or index an export from a non-standard place
 (file path or URL).
@@ -26,7 +26,7 @@ keep the index up to date or index an export from a non-standard place
 
 .. note::
     Progress bars require a recent version of the
-    `progressbar <http://code.google.com/p/python-progressbar/>` library,
+    `progressbar <http://code.google.com/p/python-progressbar/>`_ library,
     which can be installed with:
 
         sudo easy_install progressbar
