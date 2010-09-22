@@ -387,6 +387,17 @@ def help(command='help'):
         raise SystemExit('{0}: command not found'.format(command))
 
 
+@expose()
+def shell():
+    """Interactive shell with databases loaded."""
+    import code
+    with dbopenbuild('entries') as entries:
+        with dbopen('tokens') as tokens:
+            banner = 'jbo 0.1\nDatabase instances: entries, tokens'
+            context = dict(entries=entries, tokens=tokens)
+            code.interact(banner, local=context)
+
+
 def main(argv):
     """Use jbovlaste on the command line, offline."""
     if len(argv) == 1:
