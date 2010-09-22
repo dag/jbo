@@ -308,6 +308,7 @@ def define(*args):
     wrapper.initial_indent = wrapper.subsequent_indent = '    '
 
     def show(entry, entries):
+        entry = b(entry.replace('h', "'"))
         if entry not in entries:
             print('error: {0!r} is not defined'.format(entry), file=sys.stderr)
             return
