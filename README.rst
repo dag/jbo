@@ -37,7 +37,9 @@ keep the index up to date or index an export from a non-standard place
 
         sudo easy_install progressbar
 
-    This however is optional.
+    This however is optional. The `python-lxml <http://codespeak.net/lxml/>`_
+    library is similarly preferred if installed and might be faster,
+    otherwise a standard library is used for processing XML.
 
 
 jbo bashrc
