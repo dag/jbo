@@ -221,6 +221,9 @@ def build_database(url=None):
             tokens[token].setdefault(word, 0)
             tokens[token][word] += score
 
+    type_order = ('cmene', 'experimental cmavo', 'experimental gismu',
+                  "fu'ivla", 'lujvo', 'cmavo cluster', 'cmavo', 'gismu')
+
     def process_entries(entries, tokens, element):
         entry = Entry(u(element.get('word')), u(element.get('type')))
         for subelement in element:
@@ -229,13 +232,15 @@ def build_database(url=None):
             if case('definition'):
                 entry.definition, entry.raw_definition = \
                     latex_to_text(u(subelement.text))
-                score_tokens(tokens, entry.word, entry.raw_definition, 2)
+                score_tokens(tokens, entry.word, entry.raw_definition,
+                             2 + type_order.index(entry.type))
 
             elif case('notes'):
                 entry.notes, entry.raw_notes = \
                     latex_to_text(u(subelement.text))
                 entry.notes = underline_references(entry.notes)
-                score_tokens(tokens, entry.word, entry.raw_notes)
+                score_tokens(tokens, entry.word, entry.raw_notes,
+                             1 + type_order.index(entry.type))
 
         entries[element.get('word')] = entry
 
@@ -250,19 +255,19 @@ def build_database(url=None):
                 for element in progress(root.getiterator('valsi')):
                     process_entries(entries, tokens, element)
 
-            progress = ProgressBar(
-                widgets=['Glosses: ', Percentage(), Bar()],
-                maxval=len(root.findall('//nlword')))
-            for element in progress(root.getiterator('nlword')):
-                score_tokens(tokens,
-                             u(element.get('valsi')),
-                             u(element.get('word')),
-                             score=4)
-                if 'sense' in element.attrib:
-                    score_tokens(tokens,
-                                 u(element.get('valsi')),
-                                 u(element.get('sense')),
-                                 score=2)
+                progress = ProgressBar(
+                    widgets=['Glosses: ', Percentage(), Bar()],
+                    maxval=len(root.findall('//nlword')))
+                for element in progress(root.getiterator('nlword')):
+                    type_score = \
+                        type_order.index(entries[element.get('valsi')].type)
+
+                    score_tokens(tokens, u(element.get('valsi')),
+                                 u(element.get('word')), 4 + type_score)
+
+                    if 'sense' in element.attrib:
+                        score_tokens(tokens, u(element.get('valsi')),
+                                     u(element.get('sense')), 2 + type_score)
 
 
 @expose('filter')
