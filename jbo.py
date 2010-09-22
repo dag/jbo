@@ -386,7 +386,6 @@ def help(command='help'):
         raise SystemExit('{0}: command not found'.format(command))
 
 
-
 def main(argv):
     """Use jbovlaste on the command line, offline."""
     if len(argv) == 1:
@@ -406,6 +405,7 @@ def main(argv):
         if DEBUG:
             raise
         raise SystemExit('error: {0}'.format(error))
+
     try:
         COMMANDS[cmd](*args)
     except IOError as error:
