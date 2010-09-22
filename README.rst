@@ -1,7 +1,8 @@
 Use jbovlaste on the command line, offline.
 ===========================================
 
-* Displays LaTeX formatting as unicode plain text with console formatting
+* Displays L\ :sup:`A`\T\ :sub:`E`\X formatting
+  as unicode plain text with console formatting
 * Uses a hashing key-value store for fast look ups
 * Computes search terms in advance with scoring for fast serching
 * Script friendly: define your own shell aliases and functions
