@@ -410,7 +410,7 @@ def main(argv):
         print(main.__doc__)
         print()
         pad = max(map(len, COMMANDS))
-        for cmd, handler in COMMANDS.iteritems():
+        for cmd, handler in sorted(COMMANDS.iteritems()):
             doc = (handler.__doc__ or '\n').splitlines()[0].rstrip('.')
             print('  {0:<{pad}}  {1}' .format(cmd, doc, pad=pad))
         raise SystemExit
