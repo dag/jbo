@@ -286,10 +286,7 @@ def filter_entries(*terms):
                 else:
                     entry_scores[word] += more_entry_scores[word]
 
-    items = sorted(entry_scores.iteritems(),
-                   key=lambda (key, value): value,
-                   reverse=True)
-    for word, score in items:
+    for word in sorted(entry_scores, key=entry_scores.get, reverse=True):
         print(word)
 
 
