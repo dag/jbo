@@ -5,6 +5,8 @@ Use jbovlaste on the command line, offline.
   as unicode plain text with console formatting
 * Uses a hashing key-value store for fast look ups
 * Computes search terms in advance with scoring for fast serching
+* Stemming if `PyStemmer <http://pypi.python.org/pypi/PyStemmer/>`_
+  is installed
 * Script friendly: define your own shell aliases and functions
 
 

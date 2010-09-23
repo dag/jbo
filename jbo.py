@@ -38,12 +38,6 @@ except ImportError:
             return iterable
 
 
-DEBUG = 'JBO_DEBUG' in environ  # Show full tracebacks for errors
-COLUMNS = int(environ.get('COLUMNS', 80))
-DATADIR = environ.get('JBO_DATADIR', path.expanduser('~/.jbo'))
-ESCAPES = isatty(1) if environ.get('JBO_ESCAPES', 'tty') == 'tty' \
-                    else environ.get('JBO_ESCAPES') == 'always'
-
 LANGUAGE = environ.get('JBO_LANGUAGE', 'en')
 LANGUAGES = set(['id', 'ch', 'cy', 'da', 'de', 'et', 'en', 'es', 'eo', 'eu',
                  'ga', 'gl', 'ia', 'it', 'kw', 'la', 'lt', 'hu', 'mg', 'nl',
@@ -52,7 +46,30 @@ LANGUAGES = set(['id', 'ch', 'cy', 'da', 'de', 'et', 'en', 'es', 'eo', 'eu',
                  'jbo', 'no', 'sq', 'tpi', 'cs', 'el', 'be', 'bg', 'ru', 'uk',
                  'he', 'ne', 'sa', 'hi', 'gu', 'ta', 'ka', 'am', 'ar', 'fa',
                  'zh', 'ja', 'ko', 'tlh'])
+LANGUAGE_NAMES = {'da': 'danish', 'nl': 'dutch', 'en': 'english',
+                  'fi': 'finnish', 'fr': 'french', 'de': 'german',
+                  'hu': 'hungarian', 'it': 'italian', 'no': 'norwegian',
+                  'pt': 'portuguese', 'ro': 'romanian', 'ru': 'russian',
+                  'es': 'spanish', 'sv': 'swedish', 'tr': 'turkish'}
 
+try:
+    import Stemmer
+    if LANGUAGE not in LANGUAGE_NAMES:
+        raise ImportError
+except ImportError:
+    stemmer = None
+    def stem(word):
+        return word
+else:
+    stemmer = Stemmer.Stemmer(LANGUAGE_NAMES[LANGUAGE])
+    stem = stemmer.stemWord
+
+
+DEBUG = 'JBO_DEBUG' in environ  # Show full tracebacks for errors
+COLUMNS = int(environ.get('COLUMNS', 80))
+DATADIR = environ.get('JBO_DATADIR', path.expanduser('~/.jbo'))
+ESCAPES = isatty(1) if environ.get('JBO_ESCAPES', 'tty') == 'tty' \
+                    else environ.get('JBO_ESCAPES') == 'always'
 COMMANDS = {}
 
 
@@ -232,7 +249,7 @@ def build_database(url=None):
 
     def score_tokens(word, source, score=1):
         for token in re.finditer(r"[\w']+", source, re.UNICODE):
-            token = b(token.group(0).lower())
+            token = b(stem(token.group(0).lower()))
             tokens.setdefault(token, {})
             tokens[token].setdefault(word, 0)
             tokens[token][word] += score
@@ -249,14 +266,13 @@ def build_database(url=None):
                 entry._definition, entry.raw_definition = \
                     latex_to_text(u(subelement.text))
                 score_tokens(entry.word, entry.raw_definition,
-                             2 + type_order.index(entry.type))
+                             2 * type_order.index(entry.type))
 
             elif case('notes'):
                 entry._notes, entry.raw_notes = \
                     latex_to_text(u(subelement.text))
                 entry._notes = underline_references(entry._notes)
-                score_tokens(entry.word, entry.raw_notes,
-                             1 + type_order.index(entry.type))
+                score_tokens(entry.word, entry.raw_notes)
 
             elif case('selmaho'):
                 entry.class_ = u(subelement.text)
@@ -291,12 +307,11 @@ def build_database(url=None):
 
                     score_tokens(u(element.get('valsi')),
                                  u(element.get('word')),
-                                 4 + type_score)
+                                 3 * type_score)
 
                     if 'sense' in element.attrib:
                         score_tokens(u(element.get('valsi')),
-                                     u(element.get('sense')),
-                                     2 + type_score)
+                                     u(element.get('sense')))
 
 
 @expose('filter')
@@ -320,7 +335,7 @@ def filter_entries(*terms):
                       file=sys.stderr)
 
     with dbopenbuild('tokens') as tokens:
-        terms = map(str.lower, terms)
+        terms = [stem(term).lower() for term in terms]
 
         # Get the hits for the first term.
         if terms:
