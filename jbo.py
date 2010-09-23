@@ -182,6 +182,42 @@ def underline_references(text):
     return re.sub(r'\{(.+?)\}', lambda m: underline(m.group(1), True), text)
 
 
+def compound_to_affixes(compound):
+    """Split a compound word into affixes."""
+    c = r'[bcdfgjklmnprstvxz]'
+    v = r'[aeiou]'
+    cc = r'''(?:bl|br|
+                cf|ck|cl|cm|cn|cp|cr|ct|
+                dj|dr|dz|fl|fr|gl|gr|
+                jb|jd|jg|jm|jv|kl|kr|
+                ml|mr|pl|pr|
+                sf|sk|sl|sm|sn|sp|sr|st|
+                tc|tr|ts|vl|vr|xl|xr|
+                zb|zd|zg|zm|zv)'''
+    vv = r'(?:ai|ei|oi|au)'
+    rafsi3v = r"(?:{cc}{v}|{c}{vv}|{c}{v}'{v})".format(**locals())
+    rafsi3 = r'(?:{rafsi3v}|{c}{v}{c})'.format(**locals())
+    rafsi4 = r'(?:{c}{v}{c}{c}|{cc}{v}{c})'.format(**locals())
+    rafsi5 = r'{rafsi4}{v}'.format(**locals())
+
+    for i in xrange(1, len(compound)/3+1):
+        reg = r'(?:({rafsi3})[nry]??|({rafsi4})y)'.format(**locals()) * i
+        reg2 = r'^{reg}({rafsi3v}|{rafsi5})$$'.format(**locals())
+        matches = re.findall(reg2, compound, re.VERBOSE)
+        if matches:
+            return tuple(r for r in matches[0] if r)
+
+    return tuple()
+
+
+def compound_to_metaphor(compound, affixes):
+    try:
+        return ' '.join(affixes[b(affix)].word
+                        for affix in compound_to_affixes(compound))
+    except KeyError:
+        return ''
+
+
 @contextmanager
 def exit_on_eof():
     try:
@@ -197,7 +233,7 @@ class Entry(object):
         self.word, self.type = word, type
         self._definition = self.raw_definition = None
         self._notes = self.raw_notes = None
-        self.class_ = None
+        self.class_ = self.metaphor = None
         self.affixes = []
 
     @property
@@ -259,6 +295,9 @@ def build_database(url=None):
 
     def process_entries(element):
         entry = Entry(u(element.get('word')), u(element.get('type')))
+        if entry.type in ('gismu', 'experimental gismu'):
+            affixes[b(entry.word[:4])] = affixes[b(entry.word)] = entry
+
         for subelement in element:
             case = lambda tag: subelement.tag == tag
 
@@ -289,17 +328,29 @@ def build_database(url=None):
         root = etree.parse(xml)
         with dbopen('tokens', 'n', writeback=True) as tokens:
 
-            with dbopen('entries', 'n') as entries:
-                with dbopen('classes', 'n', writeback=True) as classes:
-                    with dbopen('affixes', 'n', writeback=True) as affixes:
+            with dbopen('entries', 'n', writeback=True) as entries:
+                with dbopen('affixes', 'n', writeback=True) as affixes:
+                    with dbopen('classes', 'n', writeback=True) as classes:
                         progress = ProgressBar(
-                            widgets=['Entries: ', Percentage(), Bar()],
+                            widgets=['Entries  : ', Percentage(), Bar()],
                             maxval=len(root.findall('//valsi')))
                         for element in progress(root.getiterator('valsi')):
                             process_entries(element)
 
+                    with dbopen('metaphors', 'n') as metaphors:
+                        progress = ProgressBar(
+                            widgets=['Metaphors: ', Percentage(), Bar()],
+                            maxval=len(entries))
+                        for entry in progress(entries.itervalues()):
+                            if entry.type == 'lujvo':
+                                metaphor = \
+                                    compound_to_metaphor(entry.word, affixes)
+                                if metaphor:
+                                    entry.metaphor = metaphor
+                                    metaphors[b(entry.metaphor)] = entry
+
                 progress = ProgressBar(
-                    widgets=['Glosses: ', Percentage(), Bar()],
+                    widgets=['Glosses  : ', Percentage(), Bar()],
                     maxval=len(root.findall('//nlword')))
                 for element in progress(root.getiterator('nlword')):
                     type_score = \
@@ -381,10 +432,24 @@ def define(*args):
         if not isinstance(entry, Entry):
             entry = b(entry.replace('h', "'"))
             if entry not in entries:
-                print('error: {0!r} is not defined'.format(entry),
-                      file=sys.stderr)
-                return
-            entry = entries[entry]
+                metaphor = b(compound_to_metaphor(entry, affixes))
+                if metaphor in metaphors:
+                    print('warning: {0!r} is defined as {1!r}'
+                         .format(entry, b(metaphors[metaphor].word)),
+                         file=sys.stderr)
+                    entry = metaphors[metaphor]
+                elif metaphor:
+                    print('warning: {0!r} is not defined'.format(entry),
+                          file=sys.stderr)
+                    for entry in metaphor.split():
+                        show(entry)
+                    return
+                else:
+                    print('error: {0!r} is not defined'.format(entry),
+                          file=sys.stderr)
+                    return
+            else:
+                entry = entries[entry]
 
         header = [bold(entry)]
         if entry.affixes:
@@ -414,9 +479,11 @@ def define(*args):
                 show(affixes[affix])
     if args:
         with dbopenbuild('entries') as entries:
-            for arg in args:
-                for entry in arg.splitlines():
-                    show(entry)
+            with dbopen('metaphors') as metaphors:
+                with dbopen('affixes') as affixes:
+                    for arg in args:
+                        for entry in arg.splitlines():
+                            show(entry)
     elif not options.affix:
         # Need to hold off opening the database until we get an entry,
         # for when filter is piped to define and no database is built before.
@@ -472,14 +539,18 @@ def help(command='help'):
 def shell():
     """Interactive shell with databases loaded."""
     import code
-    banner = 'jbo 0.1\nDatabase instances: entries, tokens, classes, affixes'
+    banner = ('jbo 0.1\n'
+              'Database instances: '
+              'entries, tokens, classes, affixes, metaphors')
     with dbopenbuild('entries') as entries:
         with dbopen('tokens') as tokens:
             with dbopen('classes') as classes:
                 with dbopen('affixes') as affixes:
-                    context = dict(entries=entries, tokens=tokens,
-                                   classes=classes, affixes=affixes)
-                    code.interact(banner, local=context)
+                    with dbopen('metaphors') as metaphors:
+                        context = dict(entries=entries, tokens=tokens,
+                                       classes=classes, affixes=affixes,
+                                       metaphors=metaphors)
+                        code.interact(banner, local=context)
 
 
 def main(argv):
