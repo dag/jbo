@@ -490,10 +490,12 @@ def define(*args):
         with exit_on_eof():
             entry = raw_input().strip()
         with dbopenbuild('entries') as entries:
-            while True:
-                show(entry)
-                with exit_on_eof():
-                    entry = raw_input().strip()
+            with dbopen('metaphors') as metaphors:
+                with dbopen('affixes') as affixes:
+                    while True:
+                        show(entry)
+                        with exit_on_eof():
+                            entry = raw_input().strip()
 
 
 @expose()
