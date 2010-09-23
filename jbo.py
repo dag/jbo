@@ -113,19 +113,21 @@ def print(*args, **kwargs):
     __builtins__.print(*map(b, args), **kwargs)
 
 
-def ansi_encode(text, start, end=0):
+def ansi_encode(text, start, end=0, condition=ESCAPES):
     """Encode text with ANSI control codes."""
-    return '\x1b[{0}m{1}\x1b[{2}m'.format(start, text, end)
+    if condition:
+        return '\x1b[{0}m{1}\x1b[{2}m'.format(start, text, end)
+    return text
 
 
-def bold(text):
+def bold(text, condition=ESCAPES):
     """Make text bold if printed to a terminal."""
-    return ansi_encode(text, 1, 22)
+    return ansi_encode(text, 1, 22, condition)
 
 
-def underline(text):
+def underline(text, condition=ESCAPES):
     """Underline text if printed to a terminal."""
-    return ansi_encode(text, 4, 24)
+    return ansi_encode(text, 4, 24, condition)
 
 
 def latex_to_text(latex):
@@ -147,9 +149,9 @@ def latex_to_text(latex):
 
     def typography(m):
         if m.group(1) == 'emph':
-            return underline(m.group(2))
+            return underline(m.group(2), True)
         elif m.group(1) == 'textbf':
-            return bold(m.group(2))
+            return bold(m.group(2), True)
 
     latex = re.sub(r'\s{3,}', '\n', latex)
     text_math = re.sub(r'\$(.+?)\$', math, latex)
@@ -160,7 +162,7 @@ def latex_to_text(latex):
 
 
 def underline_references(text):
-    return re.sub(r'\{(.+?)\}', lambda m: underline(m.group(1)), text)
+    return re.sub(r'\{(.+?)\}', lambda m: underline(m.group(1), True), text)
 
 
 @contextmanager
@@ -176,9 +178,22 @@ class Entry(object):
 
     def __init__(self, word, type=None):
         self.word, self.type = word, type
-        self.definition = self.raw_definition = None
-        self.notes = self.raw_notes = None
+        self._definition = self.raw_definition = None
+        self._notes = self.raw_notes = None
+        self.class_ = None
         self.affixes = []
+
+    @property
+    def definition(self):
+        if ESCAPES:
+            return self._definition
+        return self.raw_definition
+
+    @property
+    def notes(self):
+        if ESCAPES:
+            return self._notes
+        return self.raw_notes
 
     def __str__(self):
         return self.word
@@ -215,7 +230,7 @@ def build_database(url=None):
     except OSError:
         pass
 
-    def score_tokens(tokens, word, source, score=1):
+    def score_tokens(word, source, score=1):
         for token in re.finditer(r"[\w']+", source, re.UNICODE):
             token = b(token.group(0).lower())
             tokens.setdefault(token, {})
@@ -225,23 +240,28 @@ def build_database(url=None):
     type_order = ('cmene', 'experimental cmavo', 'experimental gismu',
                   "fu'ivla", 'lujvo', 'cmavo cluster', 'cmavo', 'gismu')
 
-    def process_entries(entries, tokens, element):
+    def process_entries(element):
         entry = Entry(u(element.get('word')), u(element.get('type')))
         for subelement in element:
             case = lambda tag: subelement.tag == tag
 
             if case('definition'):
-                entry.definition, entry.raw_definition = \
+                entry._definition, entry.raw_definition = \
                     latex_to_text(u(subelement.text))
-                score_tokens(tokens, entry.word, entry.raw_definition,
+                score_tokens(entry.word, entry.raw_definition,
                              2 + type_order.index(entry.type))
 
             elif case('notes'):
-                entry.notes, entry.raw_notes = \
+                entry._notes, entry.raw_notes = \
                     latex_to_text(u(subelement.text))
-                entry.notes = underline_references(entry.notes)
-                score_tokens(tokens, entry.word, entry.raw_notes,
+                entry._notes = underline_references(entry._notes)
+                score_tokens(entry.word, entry.raw_notes,
                              1 + type_order.index(entry.type))
+
+            elif case('selmaho'):
+                entry.class_ = u(subelement.text)
+                classes.setdefault(subelement.text, [])
+                classes[subelement.text].append(entry.word)
 
             elif case('rafsi'):
                 entry.affixes.append(u(subelement.text))
@@ -253,11 +273,12 @@ def build_database(url=None):
         with dbopen('tokens', 'n', writeback=True) as tokens:
 
             with dbopen('entries', 'n') as entries:
-                progress = ProgressBar(
-                    widgets=['Entries: ', Percentage(), Bar()],
-                    maxval=len(root.findall('//valsi')))
-                for element in progress(root.getiterator('valsi')):
-                    process_entries(entries, tokens, element)
+                with dbopen('classes', 'n', writeback=True) as classes:
+                    progress = ProgressBar(
+                        widgets=['Entries: ', Percentage(), Bar()],
+                        maxval=len(root.findall('//valsi')))
+                    for element in progress(root.getiterator('valsi')):
+                        process_entries(element)
 
                 progress = ProgressBar(
                     widgets=['Glosses: ', Percentage(), Bar()],
@@ -266,12 +287,14 @@ def build_database(url=None):
                     type_score = \
                         type_order.index(entries[element.get('valsi')].type)
 
-                    score_tokens(tokens, u(element.get('valsi')),
-                                 u(element.get('word')), 4 + type_score)
+                    score_tokens(u(element.get('valsi')),
+                                 u(element.get('word')),
+                                 4 + type_score)
 
                     if 'sense' in element.attrib:
-                        score_tokens(tokens, u(element.get('valsi')),
-                                     u(element.get('sense')), 2 + type_score)
+                        score_tokens(u(element.get('valsi')),
+                                     u(element.get('sense')),
+                                     2 + type_score)
 
 
 @expose('filter')
@@ -319,32 +342,27 @@ def define(*args):
 
     def show(entry, entries):
         entry = b(entry.replace('h', "'"))
+
         if entry not in entries:
             print('error: {0!r} is not defined'.format(entry), file=sys.stderr)
             return
         entry = entries[entry]
-        if ESCAPES:
-            if entry.affixes:
-                print(bold(entry), '-' + '-'.join(entry.affixes) + '-')
-            else:
-                print(bold(entry))
-            for line in entry.definition.splitlines():
+
+        header = [bold(entry)]
+        if entry.affixes:
+            header.append('-' + '-'.join(entry.affixes) + '-')
+        if entry.class_:
+            header.append(entry.class_)
+        print(' '.join(header))
+
+        for line in entry.definition.splitlines():
+            print(wrapper.fill(line))
+
+        if entry.notes is not None:
+            print()
+            for line in entry.notes.splitlines():
                 print(wrapper.fill(line))
-            if entry.notes is not None:
-                print()
-                for line in entry.notes.splitlines():
-                    print(wrapper.fill(line))
-        else:
-            if entry.affixes:
-                print(entry, '-' + '-'.join(entry.affixes) + '-')
-            else:
-                print(entry)
-            for line in entry.raw_definition.splitlines():
-                print(wrapper.fill(line))
-            if entry.raw_notes is not None:
-                print()
-                for line in entry.raw_notes.splitlines():
-                    print(wrapper.fill(line))
+
         print()
 
     if args:
@@ -407,11 +425,12 @@ def help(command='help'):
 def shell():
     """Interactive shell with databases loaded."""
     import code
+    banner = 'jbo 0.1\nDatabase instances: entries, tokens, classes'
     with dbopenbuild('entries') as entries:
         with dbopen('tokens') as tokens:
-            banner = 'jbo 0.1\nDatabase instances: entries, tokens'
-            context = dict(entries=entries, tokens=tokens)
-            code.interact(banner, local=context)
+            with dbopen('classes') as classes:
+                context = dict(entries=entries, tokens=tokens, classes=classes)
+                code.interact(banner, local=context)
 
 
 def main(argv):
