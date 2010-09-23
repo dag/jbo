@@ -5,6 +5,8 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import __builtin__
+
 from os import environ, path, isatty, makedirs
 from contextlib import closing
 import shelve
@@ -65,6 +67,7 @@ else:
     stem = stemmer.stemWord
 
 
+VERSION = '0.1dev'
 DEBUG = 'JBO_DEBUG' in environ  # Show full tracebacks for errors
 COLUMNS = int(environ.get('COLUMNS', 80))
 DATADIR = environ.get('JBO_DATADIR', path.expanduser('~/.jbo'))
@@ -127,7 +130,7 @@ def print(*args, **kwargs):
     removes the need for some boilerplate when printing to a non-tty.
 
     """
-    __builtins__.print(*map(b, args), **kwargs)
+    __builtin__.print(*map(b, args), **kwargs)
 
 
 def ansi_encode(text, start, end=0, condition=ESCAPES):
@@ -541,9 +544,9 @@ def help(command='help'):
 def shell():
     """Interactive shell with databases loaded."""
     import code
-    banner = ('jbo 0.1\n'
-              'Database instances: '
+    banner = ('jbo {0}\nDatabase instances: '
               'entries, tokens, classes, affixes, metaphors')
+    banner = banner.format(VERSION)
     with dbopenbuild('entries') as entries:
         with dbopen('tokens') as tokens:
             with dbopen('classes') as classes:

@@ -12,6 +12,19 @@ Use jbovlaste on the command line, offline.
 * Script friendly: define your own shell aliases and functions
 
 
+Installation
+------------
+
+This is currently pre-release and the recommended installation
+is a developer installation:
+
+.. code-block:: console
+
+    $ git://github.com/dag/jbo.git && cd jbo
+    $ sudo ./setup.py develop
+    $ jbo index en.xml
+
+
 jbo define
 ----------
 
