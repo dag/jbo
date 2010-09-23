@@ -21,6 +21,9 @@ is a developer installation::
     $ git://github.com/dag/jbo.git && cd jbo
     $ sudo ./setup.py develop
     $ jbo index en.xml
+    $ jbo bashrc >>~/.bashrc && source ~/.bashrc
+
+Now you can ``git pull`` changes without needing to run ``setup.py`` again.
 
 
 jbo define
