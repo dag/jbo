@@ -18,7 +18,7 @@ Installation
 This is currently pre-release and the recommended installation
 is a developer installation::
 
-    $ git://github.com/dag/jbo.git && cd jbo
+    $ git clone git://github.com/dag/jbo.git && cd jbo
     $ sudo ./setup.py develop
     $ jbo index en.xml
     $ jbo bashrc >>~/.bashrc && source ~/.bashrc
