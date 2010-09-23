@@ -16,9 +16,7 @@ Installation
 ------------
 
 This is currently pre-release and the recommended installation
-is a developer installation:
-
-.. code-block:: console
+is a developer installation::
 
     $ git://github.com/dag/jbo.git && cd jbo
     $ sudo ./setup.py develop
