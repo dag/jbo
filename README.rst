@@ -7,6 +7,8 @@ Use jbovlaste on the command line, offline.
 * Computes search terms in advance with scoring for fast serching
 * Stemming if `PyStemmer <http://pypi.python.org/pypi/PyStemmer/>`_
   is installed
+* Handles undefined compound words beautifully: *lobybau* resolves to
+  *jbobau* and *cizbau* to *cizra* and *bangu*
 * Script friendly: define your own shell aliases and functions
 
 
