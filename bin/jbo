@@ -5,8 +5,8 @@ from __future__ import absolute_import
 
 import sys
 
-import jbo
+from jbo import Entry, main
 
 
 if __name__ == '__main__':
-    jbo.main(sys.argv)
+    main(sys.argv)
