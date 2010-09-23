@@ -265,6 +265,7 @@ def build_database(url=None):
 
             elif case('rafsi'):
                 entry.affixes.append(u(subelement.text))
+                affixes[subelement.text] = entry
 
         entries[element.get('word')] = entry
 
@@ -274,11 +275,12 @@ def build_database(url=None):
 
             with dbopen('entries', 'n') as entries:
                 with dbopen('classes', 'n', writeback=True) as classes:
-                    progress = ProgressBar(
-                        widgets=['Entries: ', Percentage(), Bar()],
-                        maxval=len(root.findall('//valsi')))
-                    for element in progress(root.getiterator('valsi')):
-                        process_entries(element)
+                    with dbopen('affixes', 'n', writeback=True) as affixes:
+                        progress = ProgressBar(
+                            widgets=['Entries: ', Percentage(), Bar()],
+                            maxval=len(root.findall('//valsi')))
+                        for element in progress(root.getiterator('valsi')):
+                            process_entries(element)
 
                 progress = ProgressBar(
                     widgets=['Glosses: ', Percentage(), Bar()],
@@ -355,13 +357,19 @@ def define(*args):
     wrapper = TextWrapper(width=COLUMNS - 4)
     wrapper.initial_indent = wrapper.subsequent_indent = '    '
 
-    def show(entry, entries):
-        entry = b(entry.replace('h', "'"))
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option('-a', '--affix', action='append')
+    options, args = parser.parse_args(list(args))
 
-        if entry not in entries:
-            print('error: {0!r} is not defined'.format(entry), file=sys.stderr)
-            return
-        entry = entries[entry]
+    def show(entry):
+        if not isinstance(entry, Entry):
+            entry = b(entry.replace('h', "'"))
+            if entry not in entries:
+                print('error: {0!r} is not defined'.format(entry),
+                      file=sys.stderr)
+                return
+            entry = entries[entry]
 
         header = [bold(entry)]
         if entry.affixes:
@@ -380,19 +388,28 @@ def define(*args):
 
         print()
 
+    if options.affix:
+        with dbopenbuild('affixes') as affixes:
+            for affix in options.affix:
+                affix = b(affix.replace('h', "'"))
+                if affix not in affixes:
+                    print('error: unknown affix {0!r}'.format(affix),
+                          file=sys.stderr)
+                    continue
+                show(affixes[affix])
     if args:
         with dbopenbuild('entries') as entries:
             for arg in args:
                 for entry in arg.splitlines():
-                    show(entry, entries)
-    else:
+                    show(entry)
+    elif not options.affix:
         # Need to hold off opening the database until we get an entry,
         # for when filter is piped to define and no database is built before.
         with exit_on_eof():
             entry = raw_input().strip()
         with dbopenbuild('entries') as entries:
             while True:
-                show(entry, entries)
+                show(entry)
                 with exit_on_eof():
                     entry = raw_input().strip()
 
@@ -440,12 +457,14 @@ def help(command='help'):
 def shell():
     """Interactive shell with databases loaded."""
     import code
-    banner = 'jbo 0.1\nDatabase instances: entries, tokens, classes'
+    banner = 'jbo 0.1\nDatabase instances: entries, tokens, classes, affixes'
     with dbopenbuild('entries') as entries:
         with dbopen('tokens') as tokens:
             with dbopen('classes') as classes:
-                context = dict(entries=entries, tokens=tokens, classes=classes)
-                code.interact(banner, local=context)
+                with dbopen('affixes') as affixes:
+                    context = dict(entries=entries, tokens=tokens,
+                                   classes=classes, affixes=affixes)
+                    code.interact(banner, local=context)
 
 
 def main(argv):
