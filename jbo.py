@@ -87,12 +87,12 @@ def expose(name=None, options=False):
     return decorator
 
 
-def dbopen(db, flag='r', writeback=False):
+def dbopen(db, flag='r', writeback=False, language=LANGUAGE):
     """Self-closing context-manager for
     opening a database from the right place.
 
     """
-    return closing(shelve.open(path.join(DATADIR, LANGUAGE, db),
+    return closing(shelve.open(path.join(DATADIR, language, db),
                                flag, pickle.HIGHEST_PROTOCOL, writeback))
 
 
@@ -368,6 +368,48 @@ def build_database(url=None):
                                      u(element.get('sense')))
 
 
+@expose('index-corpus')
+def index_corpus(url=None):
+    """Index frequencies of each word in the corpus.
+
+    Usage: jbo index-corpus [url or path]
+
+    The argument points to a bzip2-compressed corpus text file.
+    If no argument is supplied, the corpus is downloaded.
+
+    Indexing takes several minutes.
+
+    Not currently used for anything in this program, but you can use the
+    frequencies database in jbo shell, your own Python program or you might
+    fork this program and add some interesting commands.
+
+    Most frequent word in jbo shell:
+
+        >>> max(frequencies, key=frequencies.get)
+        'mi'
+
+    """
+    import bz2
+    if url is None:
+        url = 'http://lojban.org/cgi-bin/corpus/corpus.txt.bz2'
+    if path.isfile(url):
+        url = 'file://' + path.abspath(url)
+
+    try:
+        makedirs(path.join(DATADIR, 'corpus'))
+    except OSError:
+        pass
+
+    with closing(urlopen(url)) as data:
+        corpus = bz2.decompress(data.read())
+
+        with dbopen('frequencies', 'n', True, 'corpus') as frequencies:
+            for match in re.finditer(r"[\w']+", corpus):
+                word = match.group(0)
+                frequencies.setdefault(word, 0)
+                frequencies[word] += 1
+
+
 @expose('filter')
 def filter_entries(*terms):
     """Filter all entries and return matches."""
@@ -544,18 +586,29 @@ def help(command='help'):
 def shell():
     """Interactive shell with databases loaded."""
     import code
-    banner = ('jbo {0}\nDatabase instances: '
-              'entries, tokens, classes, affixes, metaphors')
-    banner = banner.format(VERSION)
-    with dbopenbuild('entries') as entries:
-        with dbopen('tokens') as tokens:
-            with dbopen('classes') as classes:
-                with dbopen('affixes') as affixes:
-                    with dbopen('metaphors') as metaphors:
-                        context = dict(entries=entries, tokens=tokens,
-                                       classes=classes, affixes=affixes,
-                                       metaphors=metaphors)
-                        code.interact(banner, local=context)
+
+    context = {}
+    dbs = ['entries', 'tokens', 'classes', 'affixes', 'metaphors']
+    for db in dbs:
+        context[db] = dbopen(db).thing
+
+    try:
+        context['frequencies'] = dbopen('frequencies', language='corpus').thing
+    except DBError:
+        pass
+    else:
+        dbs.append('frequencies')
+
+    banner = 'jbo {0}\nDatabase instances: '.format(VERSION)
+    banner += ', '.join(dbs)
+    try:
+        code.interact(banner, local=dict(context))
+    finally:
+        for db in context.itervalues():
+            try:
+                db.close()
+            except Exception as error:
+                print('error: {0}'.format(error), file=sys.stderr)
 
 
 def main(argv):
