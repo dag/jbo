@@ -269,6 +269,7 @@ def build_database(url=None):
 
     With no argument, the current $JBO_LANGUAGE export is downloaded from
     jbovlaste. This is slow because jbovlaste is slow to generate exports.
+
     """
     if LANGUAGE not in LANGUAGES:
         raise SystemExit('error: {0!r} is not an available language'
@@ -464,6 +465,7 @@ def define(*args):
     Useful when piped with an entries-outputting command such as jbo filter:
 
     jbo filter <term> [term…] | jbo define
+
     """
     wrapper = TextWrapper(width=COLUMNS - 4)
     wrapper.initial_indent = wrapper.subsequent_indent = '    '
@@ -578,6 +580,7 @@ def help(command='help'):
         doc = COMMANDS[command].__doc__.splitlines()
         print(doc[0])
         print(dedent('\n'.join(doc[1:])).rstrip('\n'))
+        print()
     else:
         raise SystemExit('{0}: command not found'.format(command))
 
