@@ -481,12 +481,6 @@ def define(*args):
     wrapper = TextWrapper(width=COLUMNS - 4)
     wrapper.initial_indent = wrapper.subsequent_indent = '    '
 
-    from optparse import OptionParser
-    parser = OptionParser()
-    parser.add_option('-a', '--affix', action='append')
-    parser.add_option('-f', '--first')
-    options, args = parser.parse_args(list(args))
-
     def show(entry):
         if not isinstance(entry, Entry):
             entry = b(entry.replace('h', "'"))
@@ -527,31 +521,7 @@ def define(*args):
 
         print()
 
-    if options.affix:
-        with dbopenbuild('affixes') as affixes:
-            for affix in options.affix:
-                affix = b(affix.replace('h', "'"))
-                if affix not in affixes:
-                    print('error: unknown affix {0!r}'.format(affix),
-                          file=sys.stderr)
-                    continue
-                show(affixes[affix])
-    if options.first:
-        try:
-            entry = next(dbfilter([options.first]))
-        except StopIteration:
-            pass
-        else:
-            with dbopenbuild('entries') as entries:
-                show(entry)
-    if args:
-        with dbopenbuild('entries') as entries:
-            with dbopen('metaphors') as metaphors:
-                with dbopen('affixes') as affixes:
-                    for arg in args:
-                        for entry in arg.splitlines():
-                            show(entry)
-    elif not options.affix and not options.first:
+    if not args:
         # Need to hold off opening the database until we get an entry,
         # for when filter is piped to define and no database is built before.
         with exit_on_eof():
@@ -563,6 +533,40 @@ def define(*args):
                         show(entry)
                         with exit_on_eof():
                             entry = raw_input().strip()
+
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option('-a', '--affix', action='append')
+    parser.add_option('-f', '--first')
+    options, args = parser.parse_args(list(args))
+
+    if options.affix:
+        with dbopenbuild('affixes') as affixes:
+            for affix in options.affix:
+                affix = b(affix.replace('h', "'"))
+                if affix not in affixes:
+                    print('error: unknown affix {0!r}'.format(affix),
+                          file=sys.stderr)
+                    continue
+                show(affixes[affix])
+
+    if options.first:
+        try:
+            entry = next(dbfilter([options.first]))
+        except StopIteration:
+            pass
+        else:
+            with dbopenbuild('entries') as entries:
+                show(entry)
+
+    if args:
+        with dbopenbuild('entries') as entries:
+            with dbopen('metaphors') as metaphors:
+                with dbopen('affixes') as affixes:
+                    for arg in args:
+                        for entry in arg.splitlines():
+                            show(entry)
+
 
 
 @expose()
