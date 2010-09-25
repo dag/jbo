@@ -451,15 +451,16 @@ def filter_entries(*terms):
     parser.add_option('-c', '--class', action='append')
     options, terms = parser.parse_args(list(terms))
 
-    with dbopenbuild('classes') as classes:
-        for class_ in getattr(options, 'class') or []:
-            class_ = b(class_.upper().replace('H', 'h'))
-            if class_ in classes:
-                for entry in classes[class_]:
-                    print(entry)
-            else:
-                print('error: unknown class {0!r}'.format(class_),
-                      file=sys.stderr)
+    if getattr(options, 'class'):
+        with dbopenbuild('classes') as classes:
+            for class_ in getattr(options, 'class'):
+                class_ = b(class_.upper().replace('H', 'h'))
+                if class_ in classes:
+                    for entry in classes[class_]:
+                        print(entry)
+                else:
+                    print('error: unknown class {0!r}'.format(class_),
+                          file=sys.stderr)
 
     for word in dbfilter(terms):
         print(word)
