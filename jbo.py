@@ -107,6 +107,36 @@ def dbopenbuild(db, flag='r'):
         return dbopen(db, flag)
 
 
+def dbfilter(terms=None):
+    """Generator yielding entry names matching terms, sorted by score."""
+    if not terms:
+        raise StopIteration
+
+    with dbopenbuild('tokens') as tokens:
+        terms = [stem(term).lower() for term in terms]
+
+        # Get the hits for the first term.
+        entry_scores = tokens.get(terms.pop(0), {})
+
+        # Remaining hits will have to be in previous hits.
+        for word in entry_scores.keys():  # iterkeys() does not let us del
+            for term in terms:
+                more_entry_scores = tokens.get(term, {})
+                if word not in more_entry_scores:
+                    del entry_scores[word]
+                else:
+                    entry_scores[word] += more_entry_scores[word]
+
+    # We sort by the item tuples reversed so that the word is taken
+    # into account when the score is equal.
+    def reversed_tuple(iterable):
+        return tuple(reversed(iterable))
+
+    for word, score in sorted(entry_scores.iteritems(),
+                              key=reversed_tuple, reverse=True):
+        yield word
+
+
 def u(object):
     """Adapt and coerce object to unicode, assuming UTF-8."""
     if isinstance(object, unicode):
@@ -431,27 +461,7 @@ def filter_entries(*terms):
                 print('error: unknown class {0!r}'.format(class_),
                       file=sys.stderr)
 
-    with dbopenbuild('tokens') as tokens:
-        terms = [stem(term).lower() for term in terms]
-
-        # Get the hits for the first term.
-        if terms:
-            entry_scores = tokens.get(terms.pop(0).lower(), {})
-
-        # Remaining hits will have to be in previous hits.
-        for word in entry_scores.keys():  # iterkeys() does not let us del
-            for term in terms:
-                more_entry_scores = tokens.get(term, {})
-                if word not in more_entry_scores:
-                    del entry_scores[word]
-                else:
-                    entry_scores[word] += more_entry_scores[word]
-
-    def reversed_tuple(iterable):
-        return tuple(reversed(iterable))
-
-    for word, score in sorted(entry_scores.iteritems(),
-                              key=reversed_tuple, reverse=True):
+    for word in dbfilter(terms):
         print(word)
 
 
