@@ -113,7 +113,7 @@ def dbfilter(terms=None):
         raise StopIteration
 
     with dbopenbuild('tokens') as tokens:
-        terms = [stem(term).lower() for term in terms]
+        terms = [b(stem(term).lower()) for term in terms]
 
         # Get the hits for the first term.
         entry_scores = tokens.get(terms.pop(0), {})
