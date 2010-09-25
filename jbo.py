@@ -484,6 +484,7 @@ def define(*args):
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option('-a', '--affix', action='append')
+    parser.add_option('-f', '--first')
     options, args = parser.parse_args(list(args))
 
     def show(entry):
@@ -535,6 +536,14 @@ def define(*args):
                           file=sys.stderr)
                     continue
                 show(affixes[affix])
+    if options.first:
+        try:
+            entry = next(dbfilter([options.first]))
+        except StopIteration:
+            pass
+        else:
+            with dbopenbuild('entries') as entries:
+                show(entry)
     if args:
         with dbopenbuild('entries') as entries:
             with dbopen('metaphors') as metaphors:
@@ -542,7 +551,7 @@ def define(*args):
                     for arg in args:
                         for entry in arg.splitlines():
                             show(entry)
-    elif not options.affix:
+    elif not options.affix and not options.first:
         # Need to hold off opening the database until we get an entry,
         # for when filter is piped to define and no database is built before.
         with exit_on_eof():
