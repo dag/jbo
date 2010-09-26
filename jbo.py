@@ -572,6 +572,25 @@ def define(*args):
                             show(entry)
 
 
+@expose()
+def complete(start=''):
+    """List entries matching a prefix.
+
+    Usage: jbo complete [start of entry name]
+
+    Used for shell completion.
+
+    """
+    if start == '--commands':
+        for command in sorted(COMMANDS):
+            print(command)
+        raise SystemExit
+
+    with dbopenbuild('entries') as entries:
+        for entry in entries:
+            if entry.startswith(start) and ' ' not in entry:
+                print(entry.replace("'", "\\'"))
+
 
 @expose()
 def bashrc():
@@ -590,9 +609,40 @@ def bashrc():
     """
     stuff = '''
         alias def='COLUMNS=$COLUMNS jbo define'
-        function fd() {
-            jbo filter "$@" | JBO_ESCAPES=always def | less -R
+        fd() { jbo filter "$@" | JBO_ESCAPES=always def | less -R; }
+
+        _jbo() {
+            local cur prev
+            COMPREPLY=()
+            cur=${COMP_WORDS[COMP_CWORD]}
+            prev=${COMP_WORDS[COMP_CWORD-1]}
+
+            case "$prev" in
+                define)
+                    COMPREPLY=($(jbo complete "$cur"))
+                    return 0
+                    ;;
+                index)
+                    COMPREPLY=($(compgen -G "*.xml" -- "$cur"))
+                    return 0
+                    ;;
+                index-corpus)
+                    COMPREPLY=($(compgen -G "*.txt.bz2" -- "$cur"))
+                    return 0
+                    ;;
+            esac
+
+            COMPREPLY=($(compgen -W "$(jbo complete --commands)" -- $cur))
+            return 0
         }
+
+        _def() {
+            COMPREPLY=($(jbo complete "${COMP_WORDS[COMP_CWORD]}"))
+            return 0
+        }
+
+        complete -F _jbo jbo
+        complete -F _def def
         '''
     print(dedent(stuff))
 
