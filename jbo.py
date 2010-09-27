@@ -99,21 +99,15 @@ def dbfilter(terms=None):
                 newterms.append(b(stem(term).lower()))
         terms = newterms
 
-        # Get the hits for the first term.
-        entry_scores = tokens.get(terms.pop(0), {})
+        # Intersect entries for all search terms.
+        entry_scores = dict((word, 0) for word in set.intersection(
+            *(set(tokens.get(term, {})) for term in terms)))
 
-        # Remaining hits will have to be in previous hits.
-        drop = set()
-        for word in entry_scores:
-            for term in terms:
-                more_entry_scores = tokens.get(term, {})
-                if word not in more_entry_scores:
-                    drop.add(word)
-                else:
-                    entry_scores[word] += more_entry_scores[word]
-
-        for word in drop:
-            del entry_scores[word]
+        # Combine score for all entries.
+        for term in terms:
+            for word, score in tokens.get(term, {}).iteritems():
+                if word in entry_scores:
+                    entry_scores[word] += score
 
     # We sort by the item tuples reversed so that the word is taken
     # into account when the score is equal.
