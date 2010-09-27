@@ -512,7 +512,7 @@ def define(*args):
             else:
                 entry = entries[entry]
 
-        header = [bold(entry)]
+        header = [bold(entry.word)]
         if entry.affixes:
             header.append('-' + '-'.join(entry.affixes) + '-')
         if entry.class_:
