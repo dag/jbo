@@ -123,13 +123,17 @@ def dbfilter(terms=None):
         entry_scores = tokens.get(terms.pop(0), {})
 
         # Remaining hits will have to be in previous hits.
-        for word in entry_scores.keys():  # iterkeys() does not let us del
+        drop = set()
+        for word in entry_scores:
             for term in terms:
                 more_entry_scores = tokens.get(term, {})
                 if word not in more_entry_scores:
-                    del entry_scores[word]
+                    drop.add(word)
                 else:
                     entry_scores[word] += more_entry_scores[word]
+
+        for word in drop:
+            del entry_scores[word]
 
     # We sort by the item tuples reversed so that the word is taken
     # into account when the score is equal.
