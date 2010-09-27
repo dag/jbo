@@ -19,26 +19,6 @@ from contextlib import contextmanager
 from textwrap import TextWrapper, dedent
 import sys
 
-try:
-    from lxml import etree
-except ImportError:
-    try:
-        import xml.etree.cElementTree as etree
-    except ImportError:
-        import xml.etree.ElementTree as etree
-
-try:
-    from progressbar import ProgressBar, Percentage, Bar
-    if not callable(ProgressBar()):
-        raise ImportError
-except ImportError:
-    Percentage = Bar = object
-    class ProgressBar(object):
-        def __init__(self, *args, **kwargs):
-            pass
-        def __call__(self, iterable):
-            return iterable
-
 
 LANGUAGE = environ.get('JBO_LANGUAGE', 'en')
 LANGUAGES = set(['id', 'ch', 'cy', 'da', 'de', 'et', 'en', 'es', 'eo', 'eu',
@@ -309,6 +289,26 @@ def build_database(url=None):
     jbovlaste. This is slow because jbovlaste is slow to generate exports.
 
     """
+    try:
+        from lxml import etree
+    except ImportError:
+        try:
+            import xml.etree.cElementTree as etree
+        except ImportError:
+            import xml.etree.ElementTree as etree
+
+    try:
+        from progressbar import ProgressBar, Percentage, Bar
+        if not callable(ProgressBar()):
+            raise ImportError
+    except ImportError:
+        Percentage = Bar = object
+        class ProgressBar(object):
+            def __init__(self, *args, **kwargs):
+                pass
+            def __call__(self, iterable):
+                return iterable
+
     if LANGUAGE not in LANGUAGES:
         raise SystemExit('error: {0!r} is not an available language'
                         .format(LANGUAGE))
