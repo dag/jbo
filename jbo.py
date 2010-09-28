@@ -485,7 +485,7 @@ def define(*args):
 
     def show(entry):
         if not isinstance(entry, Entry):
-            entry = b(entry.replace('h', "'"))
+            entry = b(entry.replace('h', "'").replace('-', ' '))
             if entry not in entries:
                 metaphor = b(compound_to_metaphor(entry, affixes))
                 if metaphor in metaphors:
@@ -584,10 +584,11 @@ def complete(start=''):
             print(command)
         raise SystemExit
 
+    start = start.lower().replace('h', "'").replace('-', ' ')
     with dbopenbuild('entries') as entries:
         for entry in entries:
-            if entry.startswith(start) and ' ' not in entry:
-                print(entry.replace("'", "\\'"))
+            if entry.startswith(start):
+                print(entry.replace("'", 'h').replace(' ', '-'))
 
 
 @expose()
