@@ -446,8 +446,6 @@ def index_corpus(url=None):
 @expose('filter')
 def filter_entries(*terms):
     """Filter all entries and return matches."""
-    entry_scores = {}
-
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option('-c', '--class', action='append')
