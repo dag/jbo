@@ -100,8 +100,8 @@ def dbfilter(terms=None):
         terms = newterms
 
         # Intersect entries for all search terms.
-        entry_scores = dict((word, 0) for word in set.intersection(
-            *(set(tokens.get(term, {})) for term in terms)))
+        entry_scores = dict((word, 0) for word in
+            set.intersection(*(set(tokens.get(term, {})) for term in terms)))
 
         # Combine score for all entries.
         for term in terms:
