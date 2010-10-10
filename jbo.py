@@ -292,11 +292,11 @@ def build_database(url=None):
             import xml.etree.ElementTree as etree
 
     try:
-        from progressbar import ProgressBar, Percentage, Bar
+        from progressbar import ProgressBar, Percentage
         if not callable(ProgressBar()):
             raise ImportError
     except ImportError:
-        Percentage = Bar = object
+        Percentage = object
         class ProgressBar(object):
             def __init__(self, *args, **kwargs):
                 pass
@@ -368,14 +368,15 @@ def build_database(url=None):
                 with dbopen('affixes', 'n', writeback=True) as affixes:
                     with dbopen('classes', 'n', writeback=True) as classes:
                         progress = ProgressBar(
-                            widgets=['Entries  : ', Percentage(), Bar()],
+                            widgets=['[', Percentage(), '] Indexing entries'],
                             maxval=len(root.findall('//valsi')))
                         for element in progress(root.getiterator('valsi')):
                             process_entries(element)
 
                     with dbopen('metaphors', 'n') as metaphors:
                         progress = ProgressBar(
-                            widgets=['Metaphors: ', Percentage(), Bar()],
+                            widgets=['[', Percentage(),
+                                     '] Computing metaphors'],
                             maxval=len(entries))
                         for entry in progress(entries.itervalues()):
                             if entry.type == 'lujvo':
@@ -386,7 +387,7 @@ def build_database(url=None):
                                     metaphors[b(entry.metaphor)] = entry
 
                 progress = ProgressBar(
-                    widgets=['Glosses  : ', Percentage(), Bar()],
+                    widgets=['[', Percentage(), '] Calculating gloss scores'],
                     maxval=len(root.findall('//nlword')))
                 for element in progress(root.getiterator('nlword')):
                     type_score = \
