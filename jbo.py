@@ -296,12 +296,15 @@ def build_database(url=None):
         if not callable(ProgressBar()):
             raise ImportError
     except ImportError:
-        Percentage = object
-        class ProgressBar(object):
-            def __init__(self, *args, **kwargs):
-                pass
-            def __call__(self, iterable):
-                return iterable
+        def progressive(text, total):
+            def call(iterator):
+                print(text, file=sys.stderr)
+                return iterator
+            return call
+    else:
+        def progressive(text, total):
+            return ProgressBar(widgets=['[', Percentage(), '] ', text],
+                               maxval=total)
 
     if LANGUAGE not in LANGUAGES:
         raise SystemExit('error: {0!r} is not an available language'
@@ -367,17 +370,14 @@ def build_database(url=None):
             with dbopen('entries', 'n', writeback=True) as entries:
                 with dbopen('affixes', 'n', writeback=True) as affixes:
                     with dbopen('classes', 'n', writeback=True) as classes:
-                        progress = ProgressBar(
-                            widgets=['[', Percentage(), '] Indexing entries'],
-                            maxval=len(root.findall('//valsi')))
+                        progress = progressive('Indexing entries',
+                                               len(root.findall('//valsi')))
                         for element in progress(root.getiterator('valsi')):
                             process_entries(element)
 
                     with dbopen('metaphors', 'n') as metaphors:
-                        progress = ProgressBar(
-                            widgets=['[', Percentage(),
-                                     '] Computing metaphors'],
-                            maxval=len(entries))
+                        progress = progressive('Computing metaphors',
+                                               len(entries))
                         for entry in progress(entries.itervalues()):
                             if entry.type == 'lujvo':
                                 metaphor = \
@@ -386,9 +386,8 @@ def build_database(url=None):
                                     entry.metaphor = metaphor
                                     metaphors[b(entry.metaphor)] = entry
 
-                progress = ProgressBar(
-                    widgets=['[', Percentage(), '] Calculating gloss scores'],
-                    maxval=len(root.findall('//nlword')))
+                progress = progressive('Calculating gloss scores',
+                                       len(root.findall('//nlword')))
                 for element in progress(root.getiterator('nlword')):
                     type_score = \
                         type_order.index(entries[element.get('valsi')].type)
