@@ -689,12 +689,12 @@ def bashrc():
         fd() { jbo filter "$@" | JBO_ESCAPES=always def | less -R; }
 
         _jbo() {
-            local cur prev
+            local cur cmd
             COMPREPLY=()
             cur=${COMP_WORDS[COMP_CWORD]}
-            prev=${COMP_WORDS[COMP_CWORD-1]}
+            cmd=${COMP_WORDS[1]}
 
-            case "$prev" in
+            case "$cmd" in
                 define|get)
                     COMPREPLY=($(jbo complete "$cur"))
                     return 0
