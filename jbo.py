@@ -13,7 +13,6 @@ import shelve
 import pickle
 from anydbm import error as DBError
 from locale import getpreferredencoding
-from urllib2 import urlopen
 import re
 from contextlib import contextmanager
 from textwrap import TextWrapper, dedent
@@ -363,6 +362,7 @@ def build_database(url=None):
 
         entries[element.get('word')] = entry
 
+    from urllib2 import urlopen
     with closing(urlopen(url)) as xml:
         root = etree.parse(xml)
         with dbopen('tokens', 'n', writeback=True) as tokens:
@@ -428,6 +428,7 @@ def index_corpus(url=None):
         'mi'
 
     """
+    from urllib2 import urlopen
     import bz2
     if url is None:
         url = 'http://lojban.org/cgi-bin/corpus/corpus.txt.bz2'
