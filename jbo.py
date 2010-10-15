@@ -669,7 +669,11 @@ def complete(start=''):
 def bashrc():
     """Useful stuff to put in ~/.bashrc.
 
-    Installation: jbo bashrc >>~/.bashrc && source ~/.bashrc
+    Installation: source <(jbo bashrc)
+
+    Put it in your ~/.bashrc for permanent installation:
+
+    echo "source <(jbo bashrc)" >>~/.bashrc
 
     Usage:
 
@@ -691,7 +695,7 @@ def bashrc():
             prev=${COMP_WORDS[COMP_CWORD-1]}
 
             case "$prev" in
-                define)
+                define|get)
                     COMPREPLY=($(jbo complete "$cur"))
                     return 0
                     ;;
