@@ -569,6 +569,82 @@ def define(*args):
 
 
 @expose()
+def get(*args):
+    """Get specific data for entries.
+
+    Usage: jbo get [option] [entry…]
+
+    Reads standard input if no entries are supplied as arguments.
+
+    Options:
+      -t, --type
+      -d, --definition (default)
+      -n, --notes
+      -c, --class
+      -m, --metaphor
+      -a, --affixes
+
+    """
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option('-t', '--type', action='store_const',
+                      const='type', dest='field')
+    parser.add_option('-d', '--definition', action='store_const',
+                      const='definition', dest='field')
+    parser.add_option('-n', '--notes', action='store_const',
+                      const='notes', dest='field')
+    parser.add_option('-c', '--class', action='store_const',
+                      const='class_', dest='field')
+    parser.add_option('-m', '--metaphor', action='store_const',
+                      const='metaphor', dest='field')
+    parser.add_option('-a', '--affixes', action='store_const',
+                      const='affixes', dest='field')
+    options, args = parser.parse_args(list(args))
+    field = options.field or 'definition'
+
+    def show(entry):
+        entry = b(entry.replace('h', "'").replace('-', ' '))
+        if entry not in entries:
+            metaphor = b(compound_to_metaphor(entry, affixes))
+            if metaphor in metaphors:
+                print('warning: {0!r} is defined as {1!r}'
+                     .format(entry, b(metaphors[metaphor].word)),
+                     file=sys.stderr)
+                entry = metaphors[metaphor]
+            else:
+                print('error: {0!r} is not defined'.format(entry),
+                      file=sys.stderr)
+                return
+        else:
+            entry = entries[entry]
+
+        if field == 'affixes':
+            print(' '.join(entry.affixes))
+        else:
+            print(getattr(entry, field) or '')
+
+    if not args:
+        # Need to hold off opening the database until we get an entry,
+        # for when filter is piped to define and no database is built before.
+        with exit_on_eof():
+            entry = raw_input().strip()
+        with dbopenbuild('entries') as entries:
+            with dbopen('metaphors') as metaphors:
+                with dbopen('affixes') as affixes:
+                    while True:
+                        show(entry)
+                        with exit_on_eof():
+                            entry = raw_input().strip()
+
+    else:
+        with dbopenbuild('entries') as entries:
+            with dbopen('metaphors') as metaphors:
+                with dbopen('affixes') as affixes:
+                    for arg in args:
+                        for entry in arg.splitlines():
+                            show(entry)
+
+@expose()
 def complete(start=''):
     """List entries matching a prefix.
 
