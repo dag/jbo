@@ -386,6 +386,12 @@ def build_database(url=None):
                                     entry.metaphor = metaphor
                                     metaphors[b(entry.metaphor)] = entry
 
+                with open(path.join(DATADIR,
+                                    LANGUAGE, 'complete'), 'w') as complete:
+                    complete.write(b('\n'.join(
+                        entry.replace("'", 'h').replace(' ', '-')
+                        for entry in entries)))
+
                 progress = progressive('Calculating gloss scores',
                                        len(root.findall('//nlword')))
                 for element in progress(root.getiterator('nlword')):
@@ -658,11 +664,8 @@ def complete(start=''):
             print(command)
         raise SystemExit
 
-    start = start.lower().replace('h', "'").replace('-', ' ')
-    with dbopenbuild('entries') as entries:
-        for entry in entries:
-            if entry.startswith(start):
-                print(entry.replace("'", 'h').replace(' ', '-'))
+    with open(path.join(DATADIR, LANGUAGE, 'complete')) as complete:
+        print(''.join(line for line in complete if line.startswith(start)))
 
 
 @expose()
