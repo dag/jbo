@@ -183,6 +183,7 @@ def latex_to_text(latex):
         for x in m.group(1).split('='):
             x = x.replace('{', '').replace('}', '')
             x = x.replace('*', '×')
+            x = x.replace('/', '÷')
             x = re.sub(r'_(\d+)', sub, x)
             x = re.sub(r'\^(\d+)', sup, x)
             t.append(x)
