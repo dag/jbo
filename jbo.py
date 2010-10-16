@@ -166,15 +166,25 @@ def latex_to_text(latex):
     returns a tuple of an ANSI encoded version and a raw version.
 
     """
+    def sub(m):
+        x = m.group(1)
+        for digit, sub in zip('0123456789', '₀₁₂₃₄₅₆₇₈₉'):
+            x = x.replace(digit, sub)
+        return x
+
+    def sup(m):
+        x = m.group(1)
+        for digit, sup in zip('0123456789', '⁰¹²³⁴⁵⁶⁷⁸⁹'):
+            x = x.replace(digit, sup)
+        return x
+
     def math(m):
         t = []
         for x in m.group(1).split('='):
             x = x.replace('{', '').replace('}', '')
             x = x.replace('*', '×')
-            for digit, sub in zip('0123456789', '₀₁₂₃₄₅₆₇₈₉'):
-                x = x.replace('_' + digit, sub)
-            for digit, sup in zip('0123456789', '⁰¹²³⁴⁵⁶⁷⁸⁹'):  # FIXME
-                x = x.replace('^' + digit, sup)
+            x = re.sub(r'_(\d+)', sub, x)
+            x = re.sub(r'\^(\d+)', sup, x)
             t.append(x)
         return '='.join(t)
 
