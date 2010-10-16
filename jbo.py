@@ -168,13 +168,13 @@ def latex_to_text(latex):
     """
     def sub(m):
         x = m.group(1)
-        for digit, sub in zip('0123456789', '₀₁₂₃₄₅₆₇₈₉'):
+        for digit, sub in zip('0123456789+-', '₀₁₂₃₄₅₆₇₈₉₊₋'):
             x = x.replace(digit, sub)
         return x
 
     def sup(m):
         x = m.group(1)
-        for digit, sup in zip('0123456789', '⁰¹²³⁴⁵⁶⁷⁸⁹'):
+        for digit, sup in zip('0123456789+-', '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻'):
             x = x.replace(digit, sup)
         return x
 
@@ -184,8 +184,8 @@ def latex_to_text(latex):
             x = x.replace('{', '').replace('}', '')
             x = x.replace('*', '×')
             x = x.replace('/', '÷')
-            x = re.sub(r'_(\d+)', sub, x)
-            x = re.sub(r'\^(\d+)', sup, x)
+            x = re.sub(r'_([\d+-]+)', sub, x)
+            x = re.sub(r'\^([\d+-]+)', sup, x)
             t.append(x)
         return '='.join(t)
 
