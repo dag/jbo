@@ -399,9 +399,9 @@ def build_database(url=None):
 
                 with open(path.join(DATADIR,
                                     LANGUAGE, 'complete'), 'w') as complete:
-                    complete.write(b('\n'.join(
+                    complete.write(b('\n'.join(sorted(
                         entry.replace("'", 'h').replace(' ', '-')
-                        for entry in sorted(entries))))
+                        for entry in entries))))
 
                 progress = progressive('Calculating gloss scores',
                                        len(root.findall('//nlword')))
@@ -692,7 +692,7 @@ def bashrc():
             local language datadir
             language=${{JBO_LANGUAGE:-en}}
             datadir=${{JBO_DATADIR:-~/.jbo}}
-            look "$1" "$datadir/$language/complete"
+            look -b "$1" "$datadir/$language/complete"
         }}
 
         _jbo() {{
