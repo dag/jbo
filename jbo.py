@@ -401,7 +401,7 @@ def build_database(url=None):
                                     LANGUAGE, 'complete'), 'w') as complete:
                     complete.write(b('\n'.join(
                         entry.replace("'", 'h').replace(' ', '-')
-                        for entry in entries)))
+                        for entry in sorted(entries))))
 
                 progress = progressive('Calculating gloss scores',
                                        len(root.findall('//nlword')))
@@ -662,23 +662,6 @@ def get(*args):
                         for entry in arg.splitlines():
                             show(entry)
 
-@expose()
-def complete(start=''):
-    """List entries matching a prefix.
-
-    Usage: jbo complete [start of entry name]
-
-    Used for shell completion.
-
-    """
-    if start == '--commands':
-        for command in sorted(COMMANDS):
-            print(command)
-        raise SystemExit
-
-    with open(path.join(DATADIR, LANGUAGE, 'complete')) as complete:
-        print(''.join(line for line in complete if line.startswith(start)))
-
 
 @expose()
 def bashrc():
@@ -701,17 +684,26 @@ def bashrc():
     """
     stuff = '''
         alias def='COLUMNS=$COLUMNS jbo define'
-        fd() { jbo filter "$@" | JBO_ESCAPES=always def | less -R; }
+        fd() {{ jbo filter "$@" | JBO_ESCAPES=always def | less -R; }}
 
-        _jbo() {
+        JBO_COMMANDS="{commands}"
+
+        _comp_lojban() {{
+            local language datadir
+            language=${{JBO_LANGUAGE:-en}}
+            datadir=${{JBO_DATADIR:-~/.jbo}}
+            look -b "$1" "$datadir/$language/complete"
+        }}
+
+        _jbo() {{
             local cur cmd
             COMPREPLY=()
-            cur=${COMP_WORDS[COMP_CWORD]}
-            cmd=${COMP_WORDS[1]}
+            cur=${{COMP_WORDS[COMP_CWORD]}}
+            cmd=${{COMP_WORDS[1]}}
 
             case "$cmd" in
                 define|get)
-                    COMPREPLY=($(jbo complete "$cur"))
+                    COMPREPLY=($(_comp_lojban "$cur"))
                     return 0
                     ;;
                 index)
@@ -724,18 +716,18 @@ def bashrc():
                     ;;
             esac
 
-            COMPREPLY=($(compgen -W "$(jbo complete --commands)" -- $cur))
+            COMPREPLY=($(compgen -W "$JBO_COMMANDS" -- $cur))
             return 0
-        }
+        }}
 
-        _def() {
-            COMPREPLY=($(jbo complete "${COMP_WORDS[COMP_CWORD]}"))
+        _def() {{
+            COMPREPLY=($(_comp_lojban "${{COMP_WORDS[COMP_CWORD]}}"))
             return 0
-        }
+        }}
 
         complete -F _jbo jbo
         complete -F _def def
-        '''
+        '''.format(commands=' '.join(sorted(COMMANDS)))
     print(dedent(stuff))
 
 
