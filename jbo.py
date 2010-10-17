@@ -344,6 +344,8 @@ def build_database(url=None):
 
     def process_entries(element):
         entry = Entry(u(element.get('word')), u(element.get('type')))
+        types.setdefault(element.get('type'), [])
+        types[element.get('type')].append(entry.word)
         if entry.type in ('gismu', 'experimental gismu'):
             affixes[b(entry.word[:4])] = affixes[b(entry.word)] = entry
 
@@ -381,10 +383,12 @@ def build_database(url=None):
             with dbopen('entries', 'n', writeback=True) as entries:
                 with dbopen('affixes', 'n', writeback=True) as affixes:
                     with dbopen('classes', 'n', writeback=True) as classes:
-                        progress = progressive('Indexing entries',
-                                               len(root.findall('//valsi')))
-                        for element in progress(root.getiterator('valsi')):
-                            process_entries(element)
+                        with dbopen('types', 'n', writeback=True) as types:
+                            progress = progressive(
+                                'Indexing entries',
+                                len(root.findall('//valsi')))
+                            for element in progress(root.getiterator('valsi')):
+                                process_entries(element)
 
                     with dbopen('metaphors', 'n') as metaphors:
                         progress = progressive('Computing metaphors',
@@ -467,6 +471,7 @@ def filter_entries(*terms):
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option('-c', '--class', action='append')
+    parser.add_option('-t', '--type', action='append')
     options, terms = parser.parse_args(list(terms))
 
     subset = []
@@ -480,10 +485,22 @@ def filter_entries(*terms):
                     print('error: unknown class {0!r}'.format(class_),
                           file=sys.stderr)
 
+    if options.type:
+        with dbopenbuild('types') as types:
+            for type in options.type:
+                if type == 'fuhivla':
+                    type = "fu'ivla"
+                type = b(type.replace('-', ' '))
+                if type in types:
+                    subset.extend(types[type])
+                else:
+                    print('error: unknown type {0!r}'.format(type),
+                          file=sys.stderr)
+
     if terms:
         subset = set(subset)
         for word in dbfilter(terms):
-            if word in subset:
+            if word in subset or not subset:
                 print(word)
     else:
         for word in subset:
@@ -759,7 +776,7 @@ def shell():
     import code
 
     context = {}
-    dbs = ['entries', 'tokens', 'classes', 'affixes', 'metaphors']
+    dbs = ['entries', 'tokens', 'classes', 'types', 'affixes', 'metaphors']
     for db in dbs:
         context[db] = dbopen(db).thing
 
