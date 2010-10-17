@@ -692,7 +692,7 @@ def bashrc():
             local language datadir
             language=${{JBO_LANGUAGE:-en}}
             datadir=${{JBO_DATADIR:-~/.jbo}}
-            look -b "$1" "$datadir/$language/complete"
+            look "$1" "$datadir/$language/complete"
         }}
 
         _jbo() {{
