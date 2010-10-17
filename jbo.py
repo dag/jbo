@@ -469,19 +469,25 @@ def filter_entries(*terms):
     parser.add_option('-c', '--class', action='append')
     options, terms = parser.parse_args(list(terms))
 
+    subset = []
     if getattr(options, 'class'):
         with dbopenbuild('classes') as classes:
             for class_ in getattr(options, 'class'):
                 class_ = b(class_.upper().replace('H', 'h'))
                 if class_ in classes:
-                    for entry in classes[class_]:
-                        print(entry)
+                    subset.extend(classes[class_])
                 else:
                     print('error: unknown class {0!r}'.format(class_),
                           file=sys.stderr)
 
-    for word in dbfilter(terms):
-        print(word)
+    if terms:
+        subset = set(subset)
+        for word in dbfilter(terms):
+            if word in subset:
+                print(word)
+    else:
+        for word in subset:
+            print(word)
 
 
 @expose()
