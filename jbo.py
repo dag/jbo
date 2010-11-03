@@ -34,13 +34,17 @@ LANGUAGE_NAMES = {'da': 'danish', 'nl': 'dutch', 'en': 'english',
                   'es': 'spanish', 'sv': 'swedish', 'tr': 'turkish'}
 
 try:
-    import Stemmer
     if LANGUAGE not in LANGUAGE_NAMES:
         raise ImportError
+    import Stemmer
 except ImportError:
-    stemmer = None
-    def stem(word):
-        return word
+    try:
+        if LANGUAGE != 'en':
+            raise ImportError
+        from stemming.porter2 import stem
+    except ImportError:
+        def stem(word):
+            return word
 else:
     stemmer = Stemmer.Stemmer(LANGUAGE_NAMES[LANGUAGE])
     stem = stemmer.stemWord
